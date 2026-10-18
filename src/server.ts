@@ -24,11 +24,22 @@ const port = process.env.PORT || 5000;
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(
   cors({
-    origin: [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      process.env.FRONTEND_URL || 'http://localhost:3000'
-    ],
+    origin: (origin, callback) => {
+      // Allow mobile apps, curl, or server-to-server requests
+      if (!origin) return callback(null, true);
+      const frontend = process.env.FRONTEND_URL;
+      if (
+        origin === 'http://localhost:3000' ||
+        origin === 'http://127.0.0.1:3000' ||
+        (frontend && origin === frontend) ||
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.onrender.com') ||
+        origin.endsWith('.render.com')
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true
   })
 );
@@ -39,7 +50,16 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-// Health Check Endpoint
+// Root & Health Check Endpoints
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Axmin Prana Ayurveda API',
+    status: 'online',
+    version: '1.0.0',
+    documentation: '/api/health'
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -65,8 +85,9 @@ app.use(errorHandler);
 // Start Server
 async function startServer() {
   await connectDB();
-  app.listen(port, () => {
-    console.log(`[Server] Axmin Prana Ayurveda Backend running on port ${port} (http://localhost:${port})`);
+  const PORT_NUM = Number(port);
+  app.listen(PORT_NUM, '0.0.0.0', () => {
+    console.log(`[Server] Axmin Prana Ayurveda Backend running on port ${PORT_NUM} (http://0.0.0.0:${PORT_NUM})`);
   });
 }
 
