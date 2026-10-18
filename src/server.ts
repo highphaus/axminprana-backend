@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -61,8 +62,10 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
+  const isDbReady = mongoose.connection.readyState === 1;
   res.json({
-    status: 'healthy',
+    status: isDbReady ? 'healthy' : 'initializing',
+    database: isDbReady ? 'connected' : 'connecting',
     service: 'Axmin Prana Ayurveda Backend',
     version: '1.0.0',
     timestamp: new Date().toISOString()
@@ -82,12 +85,16 @@ app.use('/api/admin', adminRoutes);
 // Error Handling Middleware
 app.use(errorHandler);
 
-// Start Server
+// Start Server - Listen on port immediately so cloud health checks pass
 async function startServer() {
-  await connectDB();
   const PORT_NUM = Number(port);
   app.listen(PORT_NUM, '0.0.0.0', () => {
     console.log(`[Server] Axmin Prana Ayurveda Backend running on port ${PORT_NUM} (http://0.0.0.0:${PORT_NUM})`);
+  });
+
+  // Connect to Database asynchronously
+  connectDB().catch(err => {
+    console.error('[Database] MongoDB initialization error:', err);
   });
 }
 
