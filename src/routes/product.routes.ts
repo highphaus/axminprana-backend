@@ -17,10 +17,16 @@ router.get('/', async (req, res, next) => {
       sort = 'popularity',
       search,
       isFeatured,
-      isBestseller
+      isBestseller,
+      ids
     } = req.query;
 
     const query: any = {};
+
+    if (ids) {
+      const idsArray = (ids as string).split(',').filter(Boolean);
+      query._id = { $in: idsArray };
+    }
 
     if (category) {
       query.category = category;

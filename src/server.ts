@@ -15,6 +15,7 @@ import couponRoutes from './routes/coupon.routes.js';
 import reviewRoutes from './routes/review.routes.js';
 import articleRoutes from './routes/article.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import enquiryRoutes from './routes/enquiry.routes.js';
 
 dotenv.config();
 
@@ -81,6 +82,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/enquiries', enquiryRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

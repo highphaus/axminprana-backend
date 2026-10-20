@@ -106,7 +106,7 @@ async function seed() {
       slug: 'skin-radiance',
       description: 'Saffron-infused herbal oils and botanical leparchitectures for luminous, nourished, blemish-free skin.',
       icon: 'Sparkles',
-      image: 'https://images.unsplash.com/photo-1608248597359-0091d3d6e5a4?auto=format&fit=crop&w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80',
       doshaAffinity: 'Pitta & Vata',
       productCount: 3,
       order: 4
@@ -154,10 +154,10 @@ async function seed() {
       ],
       format: 'Capsule',
       images: [
-        'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=1000&q=80',
-        'https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&w=1000&q=80'
+        'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1000&q=80',
+        'https://images.unsplash.com/photo-1547887537-6158d64c35b3?auto=format&fit=crop&w=1000&q=80'
       ],
-      thumbnail: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80',
+      thumbnail: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80',
       rating: 4.9,
       reviewCount: 142,
       isFeatured: true,
@@ -195,10 +195,10 @@ async function seed() {
       ],
       format: 'Oil',
       images: [
-        'https://images.unsplash.com/photo-1608248597359-0091d3d6e5a4?auto=format&fit=crop&w=1000&q=80',
+        'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=1000&q=80',
         'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1000&q=80'
       ],
-      thumbnail: 'https://images.unsplash.com/photo-1608248597359-0091d3d6e5a4?auto=format&fit=crop&w=600&q=80',
+      thumbnail: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=600&q=80',
       rating: 4.95,
       reviewCount: 98,
       isFeatured: true,
@@ -319,9 +319,9 @@ async function seed() {
       ],
       format: 'Asava/Arishta',
       images: [
-        'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=1000&q=80'
+        'https://images.unsplash.com/photo-1577401239170-897942555fb3?auto=format&fit=crop&w=1000&q=80'
       ],
-      thumbnail: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80',
+      thumbnail: 'https://images.unsplash.com/photo-1577401239170-897942555fb3?auto=format&fit=crop&w=600&q=80',
       rating: 4.97,
       reviewCount: 310,
       isFeatured: true,
