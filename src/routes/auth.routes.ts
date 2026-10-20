@@ -3,6 +3,7 @@ import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { sendWelcomeEmail, sendOtpEmail } from '../services/email.service.js';
 
 const router = Router();
 
@@ -16,6 +17,21 @@ const RegisterSchema = z.object({
 const LoginSchema = z.object({
   email: z.string().email('Valid email is required'),
   password: z.string().min(1, 'Password is required')
+});
+
+const SendOtpSchema = z.object({
+  email: z.string().email('Valid email is required'),
+  name: z.string().optional(),
+  phone: z.string().optional(),
+  password: z.string().min(6).optional()
+});
+
+const VerifyOtpSchema = z.object({
+  email: z.string().email('Valid email is required'),
+  otp: z.string().min(4, 'Verification code is required'),
+  name: z.string().optional(),
+  phone: z.string().optional(),
+  password: z.string().min(6).optional()
 });
 
 const AddressSchema = z.object({
@@ -47,15 +63,23 @@ router.post('/register', async (req, res, next) => {
       return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
     }
 
+    const adminEmail = (process.env.ADMIN_EMAIL || 'axminprana@gmail.com').toLowerCase();
+    const isAdminEmail = data.email.toLowerCase() === adminEmail || data.email.toLowerCase().startsWith('admin@');
+
     const user = await User.create({
       name: data.name,
       email: data.email,
       password: data.password,
       phone: data.phone,
-      role: 'customer'
+      role: isAdminEmail ? 'admin' : 'customer'
     });
 
     const token = generateToken(user._id.toString(), user.role);
+
+    // Send welcome email asynchronously via Nodemailer
+    sendWelcomeEmail({ name: user.name, email: user.email }).catch(e =>
+      console.error('[Email Warning] Failed to dispatch welcome email:', e)
+    );
 
     res.status(201).json({
       success: true,
@@ -83,7 +107,119 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
 
+    const adminEmail = (process.env.ADMIN_EMAIL || 'axminprana@gmail.com').toLowerCase();
+    if ((user.email.toLowerCase() === adminEmail || user.email.toLowerCase().startsWith('admin@')) && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+    }
+
     const token = generateToken(user._id.toString(), user.role);
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/send-otp
+router.post('/send-otp', async (req, res, next) => {
+  try {
+    const { email, name, phone, password } = SendOtpSchema.parse(req.body);
+    const normalizedEmail = email.toLowerCase().trim();
+
+    let user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      // If user doesn't exist, create customer account seamlessly with registration details
+      user = await User.create({
+        name: name?.trim() || normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        phone: phone?.trim(),
+        password: password || undefined,
+        role: 'customer'
+      });
+    } else {
+      if (name && (!user.name || user.name === normalizedEmail.split('@')[0])) {
+        user.name = name.trim();
+      }
+      if (phone && !user.phone) {
+        user.phone = phone.trim();
+      }
+      if (password) {
+        user.password = password;
+      }
+    }
+
+    // Generate secure 6-digit OTP code
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save();
+
+    // Dispatch via Nodemailer to user's email
+    await sendOtpEmail(user.email, otp, user.name);
+
+    res.json({
+      success: true,
+      message: `A 6-digit verification code has been dispatched to ${user.email}.`
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/verify-otp
+router.post('/verify-otp', async (req, res, next) => {
+  try {
+    const { email, otp, name, phone, password } = VerifyOtpSchema.parse(req.body);
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Account not found. Please verify your email.' });
+    }
+
+    if (!user.otp || !user.otpExpires || user.otp !== otp.trim()) {
+      return res.status(400).json({ success: false, message: 'Invalid verification code. Please check your email.' });
+    }
+
+    if (new Date() > user.otpExpires) {
+      return res.status(400).json({ success: false, message: 'Verification code has expired. Please request a new code.' });
+    }
+
+    // Clear used OTP and update profile if provided
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    if (name?.trim() && (!user.name || user.name === normalizedEmail.split('@')[0])) {
+      user.name = name.trim();
+    }
+    if (phone?.trim() && !user.phone) {
+      user.phone = phone.trim();
+    }
+    if (password) {
+      user.password = password;
+    }
+    const adminEmail = (process.env.ADMIN_EMAIL || 'axminprana@gmail.com').toLowerCase();
+    if ((user.email.toLowerCase() === adminEmail || user.email.toLowerCase().startsWith('admin@')) && user.role !== 'admin') {
+      user.role = 'admin';
+    }
+    await user.save();
+
+    const token = generateToken(user._id.toString(), user.role);
+
+    // Send welcome email if not sent before
+    sendWelcomeEmail({ name: user.name, email: user.email }).catch(e =>
+      console.error('[Email Warning] Failed to dispatch welcome email:', e)
+    );
 
     res.json({
       success: true,
@@ -104,6 +240,12 @@ router.post('/login', async (req, res, next) => {
 // Current user profile
 router.get('/me', authenticate, async (req: AuthRequest, res) => {
   const user = req.user!;
+  const adminEmail = (process.env.ADMIN_EMAIL || 'axminprana@gmail.com').toLowerCase();
+  if ((user.email.toLowerCase() === adminEmail || user.email.toLowerCase().startsWith('admin@')) && user.role !== 'admin') {
+    user.role = 'admin';
+    await user.save();
+  }
+
   res.json({
     success: true,
     user: {

@@ -22,8 +22,26 @@ export async function connectDB(): Promise<typeof mongoose | null> {
     
     console.log(`[Database] MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
     return conn;
-  } catch (error) {
-    console.error('[Database] MongoDB connection error:', error);
+  } catch (error: any) {
+    console.warn('[Database] Primary MongoDB connection failed:', error.message);
+
+    // If Atlas failed (e.g. IP whitelist or SSL alert 80), attempt local MongoDB fallback in development
+    if (process.env.NODE_ENV !== 'production' && connectionUri !== 'mongodb://127.0.0.1:27017/axminprana_ayurveda') {
+      try {
+        console.log('[Database] Attempting connection to local MongoDB fallback (mongodb://127.0.0.1:27017)...');
+        const fallbackConn = await mongoose.connect('mongodb://127.0.0.1:27017/axminprana_ayurveda', {
+          maxPoolSize: 20,
+          serverSelectionTimeoutMS: 3000,
+          socketTimeoutMS: 45000,
+          autoIndex: true,
+        });
+        console.log(`[Database] Connected to Local MongoDB Fallback: ${fallbackConn.connection.host}/${fallbackConn.connection.name}`);
+        return fallbackConn;
+      } catch (fallbackError) {
+        console.error('[Database] Local fallback also failed:', fallbackError);
+      }
+    }
+
     if (process.env.NODE_ENV === 'production') {
       console.warn('[Database] Retrying connection in 10 seconds...');
       setTimeout(() => connectDB(), 10000);

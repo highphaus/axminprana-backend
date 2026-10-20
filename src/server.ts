@@ -1,9 +1,11 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -16,8 +18,6 @@ import reviewRoutes from './routes/review.routes.js';
 import articleRoutes from './routes/article.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import enquiryRoutes from './routes/enquiry.routes.js';
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -103,3 +103,4 @@ async function startServer() {
 startServer();
 
 export default app;
+

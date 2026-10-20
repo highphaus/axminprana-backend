@@ -5,6 +5,7 @@ import { Order } from '../models/Order.js';
 import { Product } from '../models/Product.js';
 import { Coupon } from '../models/Coupon.js';
 import { optionalAuthenticate, authenticate, AuthRequest } from '../middleware/auth.js';
+import { sendOrderConfirmationEmail, sendStockAlertEmail } from '../services/email.service.js';
 
 const router = Router();
 
@@ -12,6 +13,7 @@ const CreateOrderSchema = z.object({
   items: z.array(
     z.object({
       productId: z.string(),
+      slug: z.string().optional(),
       packSize: z.string(),
       quantity: z.number().int().min(1)
     })
@@ -25,7 +27,7 @@ const CreateOrderSchema = z.object({
     state: z.string().min(2),
     pincode: z.string().regex(/^\d{6}$/, 'Valid 6-digit Indian PIN code required')
   }),
-  paymentMethod: z.enum(['razorpay', 'cod', 'upi']),
+  paymentMethod: z.enum(['razorpay', 'upi']),
   couponCode: z.string().optional(),
   guestEmail: z.string().email().optional(),
   guestPhone: z.string().optional()
@@ -45,9 +47,19 @@ router.post('/', optionalAuthenticate, async (req: AuthRequest, res, next) => {
     const verifiedItems = [];
 
     for (const item of data.items) {
-      const product = productMap.get(item.productId);
+      let product = productMap.get(item.productId);
+      if (!product && item.slug) {
+        const fallback = await Product.findOne({ slug: item.slug });
+        if (fallback) {
+          product = fallback;
+        }
+      }
       if (!product) {
-        return res.status(400).json({ success: false, message: `Product ${item.productId} no longer exists` });
+        return res.status(400).json({
+          success: false,
+          staleProductId: item.productId,
+          message: `Product ${item.productId} no longer exists`
+        });
       }
 
       if (product.stock < item.quantity) {
@@ -125,7 +137,7 @@ router.post('/', optionalAuthenticate, async (req: AuthRequest, res, next) => {
       items: verifiedItems,
       shippingAddress: data.shippingAddress,
       paymentMethod: data.paymentMethod,
-      paymentStatus: data.paymentMethod === 'cod' ? 'pending' : 'pending',
+      paymentStatus: 'pending',
       orderStatus: 'placed',
       subtotal,
       discountAmount,
@@ -146,12 +158,24 @@ router.post('/', optionalAuthenticate, async (req: AuthRequest, res, next) => {
       ]
     });
 
-    // Deduct stock for inventory integrity
+    // Deduct stock for inventory integrity and notify if stock reaches 0 or <= 5
     for (const item of data.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity }
-      });
+      const updatedProduct = await Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { stock: -item.quantity } },
+        { new: true }
+      );
+      if (updatedProduct && updatedProduct.stock <= 5) {
+        sendStockAlertEmail(updatedProduct).catch(e =>
+          console.error('[Stock Alert Warning]:', e)
+        );
+      }
     }
+
+    // Send confirmation email asynchronously via Nodemailer
+    sendOrderConfirmationEmail(newOrder).catch(e =>
+      console.error('[Email Warning] Failed to dispatch order confirmation email:', e)
+    );
 
     res.status(201).json({
       success: true,
@@ -246,11 +270,68 @@ router.get('/:id', optionalAuthenticate, async (req: AuthRequest, res, next) => 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
-
     res.json({ success: true, data: order });
   } catch (err) {
     next(err);
   }
 });
 
+// POST /api/orders/:id/cancel - Customer Cancellation (Strictly before shipping)
+router.post('/:id/cancel', optionalAuthenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Verify ownership if logged in
+    if (req.userId && order.userId && order.userId.toString() !== req.userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to cancel this order' });
+    }
+
+    if (order.orderStatus === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'This order is already cancelled' });
+    }
+
+    // Strict rule: Cancellation is ONLY permitted prior to shipping/dispatch
+    if (['shipped', 'out_for_delivery', 'delivered'].includes(order.orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order has already been dispatched from our dispensary hub and can no longer be cancelled. In accordance with Ayurvedic healthcare safety guidelines, shipped orders are not eligible for return or exchange.'
+      });
+    }
+
+    // Safe to cancel (placed, confirmed, processing)
+    order.orderStatus = 'cancelled';
+    if (order.paymentStatus === 'paid') {
+      order.paymentStatus = 'refunded';
+    }
+
+    order.timeline.push({
+      status: 'cancelled',
+      message: 'Order cancelled prior to dispensary dispatch. 100% refund initiated.',
+      timestamp: new Date(),
+      location: 'Central Dispensary Hub, Haridwar'
+    });
+
+    await order.save();
+
+    // Restock formulations back into active inventory
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(item.productId, {
+        $inc: { stock: item.quantity }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Order has been successfully cancelled before dispatch. Full refund has been initiated.',
+      data: order
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
+

@@ -25,14 +25,11 @@ async function seed() {
   ]);
 
   console.log('[Seed] Creating Users...');
-  const salt = await bcrypt.genSalt(10);
-  const adminPassword = await bcrypt.hash('Admin@12345', salt);
-  const customerPassword = await bcrypt.hash('Customer@12345', salt);
 
   const adminUser = await User.create({
     name: 'Vaidya Ananth Sharma (Admin)',
     email: 'admin@axminprana.com',
-    password: adminPassword,
+    password: 'Admin@12345',
     phone: '9876543210',
     role: 'admin',
     addresses: [
@@ -52,7 +49,7 @@ async function seed() {
   const customerUser = await User.create({
     name: 'Aarav Patel',
     email: 'customer@axminprana.com',
-    password: customerPassword,
+    password: 'Customer@12345',
     phone: '9811223344',
     role: 'customer',
     addresses: [

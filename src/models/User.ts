@@ -20,6 +20,8 @@ export interface IUser extends Document {
   password?: string;
   phone?: string;
   role: 'customer' | 'admin';
+  otp?: string;
+  otpExpires?: Date;
   addresses: IAddress[];
   wishlist: mongoose.Types.ObjectId[];
   createdAt: Date;
@@ -46,6 +48,8 @@ const UserSchema = new Schema<IUser>(
     password: { type: String, select: false },
     phone: { type: String, trim: true },
     role: { type: String, enum: ['customer', 'admin'], default: 'customer' },
+    otp: { type: String },
+    otpExpires: { type: Date },
     addresses: [AddressSchema],
     wishlist: [{ type: Schema.Types.ObjectId, ref: 'Product' }]
   },
@@ -54,6 +58,9 @@ const UserSchema = new Schema<IUser>(
 
 UserSchema.pre('save', async function (next) {
   if (!this.isModified('password') || !this.password) return next();
+  if (this.password.startsWith('$2a$') || this.password.startsWith('$2b$')) {
+    return next();
+  }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();

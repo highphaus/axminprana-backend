@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { Enquiry } from '../models/Enquiry.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
+import { sendEnquiryNotificationEmail } from '../services/email.service.js';
 
 const router = Router();
 
@@ -22,6 +23,11 @@ router.post('/', async (req, res, next) => {
     const validated = EnquirySchema.parse(req.body);
 
     const enquiry = await Enquiry.create(validated);
+
+    // Send email notification to axminprana@gmail.com and acknowledgment to customer
+    sendEnquiryNotificationEmail(enquiry).catch(e =>
+      console.error('[Email Warning] Failed to dispatch enquiry email:', e)
+    );
 
     res.status(201).json({
       success: true,
