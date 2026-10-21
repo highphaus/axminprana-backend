@@ -15,23 +15,26 @@ router.use(authenticate, requireAdmin);
 // GET /api/admin/stats
 router.get('/stats', async (req, res, next) => {
   try {
-    const [totalOrders, totalProducts, totalUsers, orders] = await Promise.all([
+    const [totalOrders, totalProducts, totalUsers, allOrders] = await Promise.all([
       Order.countDocuments(),
       Product.countDocuments(),
-      User.countDocuments({ role: 'customer' }),
-      Order.find({ paymentStatus: 'paid' }).select('totalAmount')
+      User.countDocuments(),
+      Order.find().select('totalAmount paymentStatus')
     ]);
 
-    const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+    const paidOrders = allOrders.filter(o => o.paymentStatus === 'paid');
+    const totalRevenue = paidOrders.length > 0
+      ? paidOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0)
+      : allOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
     const recentOrders = await Order.find()
       .sort({ createdAt: -1 })
-      .limit(5)
-      .select('orderNumber totalAmount paymentStatus orderStatus createdAt shippingAddress');
+      .limit(10)
+      .select('orderNumber totalAmount paymentStatus orderStatus createdAt shippingAddress guestEmail items');
 
-    const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
+    const lowStockProducts = await Product.find({ stock: { $lte: 10 } })
       .select('name sku stock price thumbnail')
-      .limit(5);
+      .limit(10);
 
     res.json({
       success: true,

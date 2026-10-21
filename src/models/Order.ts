@@ -33,7 +33,7 @@ export interface IOrder extends Document {
     state: string;
     pincode: string;
   };
-  paymentMethod: 'razorpay' | 'upi';
+  paymentMethod: 'razorpay' | 'upi' | 'card' | 'netbanking';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   orderStatus: 'placed' | 'confirmed' | 'processing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'cancelled';
   subtotal: number;
@@ -86,7 +86,7 @@ const OrderSchema = new Schema<IOrder>(
       state: { type: String, required: true },
       pincode: { type: String, required: true }
     },
-    paymentMethod: { type: String, enum: ['razorpay', 'upi'], default: 'upi' },
+    paymentMethod: { type: String, enum: ['razorpay', 'upi', 'card', 'netbanking'], default: 'razorpay' },
     paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' },
     orderStatus: {
       type: String,

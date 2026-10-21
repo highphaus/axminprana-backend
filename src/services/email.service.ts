@@ -84,7 +84,7 @@ export async function sendWelcomeEmail(user: { name: string; email: string }) {
           Explore our range of classical churnas, tailams, rasayanas, and wellness capsules prepared in strict accordance with classical Samhitas.
         </p>
         <div style="text-align: center; margin: 28px 0;">
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/shop" style="background: #214E34; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: bold; display: inline-block;">
+          <a href="${process.env.FRONTEND_URL || 'https://axminprana.com'}/shop" style="background: #214E34; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: bold; display: inline-block;">
             Explore Ayurvedic Formulations
           </a>
         </div>
@@ -190,7 +190,7 @@ export async function sendOrderConfirmationEmail(order: any) {
       <p><strong>Total Amount:</strong> ₹${order.totalAmount} (${order.paymentMethod} - ${order.paymentStatus})</p>
       <p><strong>Items Count:</strong> ${order.items.length}</p>
       <p><strong>Shipping City:</strong> ${order.shippingAddress.city}, ${order.shippingAddress.state}</p>
-      <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin" style="background: #214E34; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;">View in Admin Panel</a>
+      <a href="${process.env.FRONTEND_URL || 'https://axminprana.com'}/admin" style="background: #214E34; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;">View in Admin Panel</a>
     </div>
   `;
 
@@ -257,7 +257,7 @@ export async function sendStockAlertEmail(product: any) {
       <p><strong>SKU:</strong> ${product.sku}</p>
       <p><strong>Current Dispensary Stock:</strong> <span style="font-size: 18px; font-weight: bold; color: ${isZero ? '#C53030' : '#C05621'};">${product.stock} units</span></p>
       <p>Please update or replenish dispensary inventory via the Axmin Prana Admin Console.</p>
-      <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin" style="background: #214E34; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;">Manage Inventory</a>
+      <a href="${process.env.FRONTEND_URL || 'https://axminprana.com'}/admin" style="background: #214E34; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;">Manage Inventory</a>
     </div>
   `;
 

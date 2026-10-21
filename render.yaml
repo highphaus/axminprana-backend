@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: axminprana-backend
+    env: node
+    region: singapore   # Closest to Kerala, India
+    plan: free           # Change to 'starter' for always-on (no sleep)
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_URL
+        value: https://www.axminprana.com
+      - key: MONGODB_URI
+        sync: false   # Set manually in Render dashboard (keep secret)
+      - key: JWT_SECRET
+        sync: false   # Set manually in Render dashboard (keep secret)
+      - key: EMAIL_SERVICE
+        value: gmail
+      - key: EMAIL_USER
+        value: axminprana@gmail.com
+      - key: EMAIL_PASS
+        sync: false   # Set manually in Render dashboard (keep secret)
+      - key: ADMIN_EMAIL
+        value: axminprana@gmail.com

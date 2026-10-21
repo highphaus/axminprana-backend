@@ -27,7 +27,7 @@ const CreateOrderSchema = z.object({
     state: z.string().min(2),
     pincode: z.string().regex(/^\d{6}$/, 'Valid 6-digit Indian PIN code required')
   }),
-  paymentMethod: z.enum(['razorpay', 'upi']),
+  paymentMethod: z.enum(['razorpay', 'upi', 'card', 'netbanking']).or(z.string()),
   couponCode: z.string().optional(),
   guestEmail: z.string().email().optional(),
   guestPhone: z.string().optional()
@@ -111,23 +111,16 @@ router.post('/', optionalAuthenticate, async (req: AuthRequest, res, next) => {
       }
     }
 
-    // Tax (12% Ayurvedic GST included or calculated)
     const taxableSubtotal = Math.max(0, subtotal - discountAmount);
-    // GST 5% on Ayurvedic medicines / 12% on wellness: e.g. 5% effective GST
-    const taxAmount = Math.round(taxableSubtotal * 0.05);
-
-    // Free delivery over ₹999, else standard ₹80
-    const shippingFee = taxableSubtotal >= 999 ? 0 : 80;
-    const totalAmount = taxableSubtotal + taxAmount + shippingFee;
+    const taxAmount = 0;
+    const shippingFee = 0;
+    const totalAmount = taxableSubtotal;
 
     // Generate readable Indian Order Number e.g. AP-2026-94819
     const orderNumber = `AP-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    // Create Razorpay simulated/live order id
-    const razorpayOrderId =
-      data.paymentMethod === 'razorpay' || data.paymentMethod === 'upi'
-        ? `order_${crypto.randomBytes(8).toString('hex')}`
-        : undefined;
+    // Create Razorpay order id for online payment gateway
+    const razorpayOrderId = `order_${crypto.randomBytes(8).toString('hex')}`;
 
     const newOrder = await Order.create({
       orderNumber,
@@ -153,7 +146,7 @@ router.post('/', optionalAuthenticate, async (req: AuthRequest, res, next) => {
           status: 'placed',
           message: 'Order received and logged in Ayurveda fulfillment system.',
           timestamp: new Date(),
-          location: 'Vedic Wellness Hub, Haridwar'
+          location: 'Vedic Wellness Hub, Kallara, Trivandrum, Kerala'
         }
       ]
     });
@@ -311,7 +304,7 @@ router.post('/:id/cancel', optionalAuthenticate, async (req: AuthRequest, res, n
       status: 'cancelled',
       message: 'Order cancelled prior to dispensary dispatch. 100% refund initiated.',
       timestamp: new Date(),
-      location: 'Central Dispensary Hub, Haridwar'
+      location: 'Central Dispensary Hub, Kallara, Trivandrum, Kerala'
     });
 
     await order.save();

@@ -30,10 +30,20 @@ app.use(
       // Allow mobile apps, curl, or server-to-server requests
       if (!origin) return callback(null, true);
       const frontend = process.env.FRONTEND_URL;
+      const allowed = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://axminprana.com',
+        'https://www.axminprana.com',
+        'http://axminprana.com',
+        'http://www.axminprana.com'
+      ];
+      if (frontend) {
+        frontend.split(',').forEach(u => allowed.push(u.trim()));
+      }
       if (
-        origin === 'http://localhost:3000' ||
-        origin === 'http://127.0.0.1:3000' ||
-        (frontend && origin === frontend) ||
+        allowed.includes(origin) ||
+        origin.endsWith('.axminprana.com') ||
         origin.endsWith('.vercel.app') ||
         origin.endsWith('.onrender.com') ||
         origin.endsWith('.render.com')
