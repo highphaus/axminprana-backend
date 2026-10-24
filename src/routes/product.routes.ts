@@ -162,7 +162,7 @@ router.get('/bestsellers', async (req, res, next) => {
   try {
     const products = await Product.find({ isBestseller: true })
       .select('name slug tagline category price salePrice stock packSize format thumbnail rating reviewCount isBestseller doshaBalancing')
-      .limit(8)
+      .limit(30)
       .lean();
 
     res.json({ success: true, data: products });
