@@ -256,20 +256,55 @@ router.get('/track/:orderNumber', async (req, res, next) => {
   }
 });
 
-// GET /api/orders/:id
+// GET /api/orders/:id - Secure order retrieval (Prevents IDOR)
 router.get('/:id', optionalAuthenticate, async (req: AuthRequest, res, next) => {
   try {
     const order = await Order.findById(req.params.id).lean();
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
+
+    // Authorization check: Admin can access any order
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin) {
+      if (order.userId) {
+        // Registered user order: Must be authenticated and owner
+        if (!req.userId || order.userId.toString() !== req.userId) {
+          return res.status(403).json({ success: false, message: 'Unauthorized. You do not have permission to view this order.' });
+        }
+      } else {
+        // Guest order: Verify email or phone query if not authenticated
+        const verifyEmail = (req.query.email as string)?.toLowerCase()?.trim();
+        const verifyPhone = req.query.phone as string;
+        if (
+          (!verifyEmail || verifyEmail !== order.guestEmail?.toLowerCase()?.trim()) &&
+          (!verifyPhone || verifyPhone !== order.shippingAddress?.phone)
+        ) {
+          // Return limited safe order data for tracking without leaking sensitive personal address
+          return res.json({
+            success: true,
+            data: {
+              _id: order._id,
+              orderNumber: order.orderNumber,
+              createdAt: order.createdAt,
+              orderStatus: order.orderStatus,
+              paymentStatus: order.paymentStatus,
+              totalAmount: order.totalAmount,
+              items: order.items,
+              timeline: order.timeline
+            }
+          });
+        }
+      }
+    }
+
     res.json({ success: true, data: order });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/orders/:id/cancel - Customer Cancellation (Strictly before shipping)
+// POST /api/orders/:id/cancel - Customer Cancellation (Strictly before shipping, Prevents IDOR)
 router.post('/:id/cancel', optionalAuthenticate, async (req: AuthRequest, res, next) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -277,9 +312,23 @@ router.post('/:id/cancel', optionalAuthenticate, async (req: AuthRequest, res, n
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Verify ownership if logged in
-    if (req.userId && order.userId && order.userId.toString() !== req.userId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized to cancel this order' });
+    // Verify ownership
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin) {
+      if (order.userId) {
+        if (!req.userId || order.userId.toString() !== req.userId) {
+          return res.status(403).json({ success: false, message: 'Unauthorized. You do not have permission to cancel this order.' });
+        }
+      } else {
+        // Guest order cancellation requires matching guestEmail or phone
+        const { guestEmail, guestPhone } = req.body || {};
+        if (
+          (!guestEmail || guestEmail.toLowerCase().trim() !== order.guestEmail?.toLowerCase()?.trim()) &&
+          (!guestPhone || guestPhone !== order.shippingAddress?.phone)
+        ) {
+          return res.status(403).json({ success: false, message: 'Unauthorized. Verification details required to cancel guest order.' });
+        }
+      }
     }
 
     if (order.orderStatus === 'cancelled') {

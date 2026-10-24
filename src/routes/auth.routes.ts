@@ -64,7 +64,7 @@ router.post('/register', async (req, res, next) => {
     }
 
     const adminEmail = (process.env.ADMIN_EMAIL || 'axminprana@gmail.com').toLowerCase();
-    const isAdminEmail = data.email.toLowerCase() === adminEmail || data.email.toLowerCase().startsWith('admin@');
+    const isAdminEmail = data.email.toLowerCase() === adminEmail;
 
     const user = await User.create({
       name: data.name,
@@ -108,7 +108,7 @@ router.post('/login', async (req, res, next) => {
     }
 
     const adminEmail = (process.env.ADMIN_EMAIL || 'axminprana@gmail.com').toLowerCase();
-    if ((user.email.toLowerCase() === adminEmail || user.email.toLowerCase().startsWith('admin@')) && user.role !== 'admin') {
+    if (user.email.toLowerCase() === adminEmail && user.role !== 'admin') {
       user.role = 'admin';
       await user.save();
     }

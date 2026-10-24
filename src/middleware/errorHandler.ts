@@ -28,8 +28,10 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     });
   }
 
-  res.status(err.status || 500).json({
+  const isProduction = process.env.NODE_ENV === 'production';
+  const statusCode = err.status || 500;
+  res.status(statusCode).json({
     success: false,
-    message: err.message || 'Internal Server Error'
+    message: statusCode === 500 && isProduction ? 'An unexpected server error occurred. Please contact support.' : (err.message || 'Internal Server Error')
   });
 };

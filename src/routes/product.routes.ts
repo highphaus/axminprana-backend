@@ -58,15 +58,18 @@ router.get('/', async (req, res, next) => {
       query.isBestseller = true;
     }
 
-    if (search) {
-      const searchRegex = new RegExp(search as string, 'i');
-      query.$or = [
-        { name: searchRegex },
-        { tagline: searchRegex },
-        { description: searchRegex },
-        { 'keyIngredients.name': searchRegex },
-        { 'keyIngredients.botanicalName': searchRegex }
-      ];
+    if (search && typeof search === 'string') {
+      const sanitized = search.trim().slice(0, 80).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (sanitized) {
+        const searchRegex = new RegExp(sanitized, 'i');
+        query.$or = [
+          { name: searchRegex },
+          { tagline: searchRegex },
+          { description: searchRegex },
+          { 'keyIngredients.name': searchRegex },
+          { 'keyIngredients.botanicalName': searchRegex }
+        ];
+      }
     }
 
     // Sort order

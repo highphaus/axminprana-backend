@@ -23,20 +23,22 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // Security & Middleware
+app.disable('x-powered-by');
 app.use(helmet({ crossOriginResourcePolicy: false }));
+
+import { authLimiter, enquiryLimiter } from './middleware/rateLimiter.js';
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow mobile apps, curl, or server-to-server requests
+      // Allow non-browser requests (mobile apps, server-to-server, health checks)
       if (!origin) return callback(null, true);
       const frontend = process.env.FRONTEND_URL;
       const allowed = [
         'http://localhost:3000',
         'http://127.0.0.1:3000',
         'https://axminprana.com',
-        'https://www.axminprana.com',
-        'http://axminprana.com',
-        'http://www.axminprana.com'
+        'https://www.axminprana.com'
       ];
       if (frontend) {
         frontend.split(',').forEach(u => allowed.push(u.trim()));
@@ -50,13 +52,13 @@ app.use(
       ) {
         return callback(null, true);
       }
-      return callback(null, true);
+      return callback(new Error('CORS policy: Access denied for this origin.'));
     },
     credentials: true
   })
 );
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
@@ -83,8 +85,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Mount Routes
-app.use('/api/auth', authRoutes);
+// Mount Routes with specialized security rate limiting
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/orders', orderRoutes);
@@ -92,7 +94,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/enquiries', enquiryRoutes);
+app.use('/api/enquiries', enquiryLimiter, enquiryRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);
