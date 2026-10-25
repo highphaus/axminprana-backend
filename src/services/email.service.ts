@@ -35,16 +35,96 @@ function getTransporter() {
   return cachedTransporter;
 }
 
+function getGoogleScriptUrl(): string | null {
+  return (
+    process.env.MAIL_SCRIPT_URL ||
+    process.env.GOOGLE_SCRIPT_URL ||
+    process.env.EMAIL_SCRIPT_URL ||
+    process.env.OTP_SCRIPT_URL ||
+    'https://script.google.com/macros/s/AKfycbyOikz0_ZumfoOYpANyZY3B2DNg7nGwpOXoqSj2r-o7H10gSbQAc5Y1I8FHZ_jLon25qg/exec'
+  );
+}
+
 /**
- * Helper to send email safely without throwing uncaught exceptions to the caller
+ * Dispatch email via Google Apps Script Web App (High-reliability HTTP delivery)
  */
-async function sendMailSafe(options: SendMailOptions) {
+export async function sendViaGoogleScript(payload: {
+  to: string;
+  subject: string;
+  html?: string;
+  text?: string;
+  otp?: string;
+}) {
+  const scriptUrl = getGoogleScriptUrl();
+  if (!scriptUrl) return { success: false, error: 'No Google Script URL configured' };
+
+  try {
+    const plainText =
+      payload.text || (payload.html ? payload.html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '');
+
+    const res = await fetch(scriptUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: payload.to,
+        email: payload.to,
+        recipient: payload.to,
+        subject: payload.subject,
+        otp: payload.otp || '',
+        code: payload.otp || '',
+        html: payload.html || '',
+        htmlBody: payload.html || '',
+        body: plainText,
+        message: plainText || payload.otp || '',
+      }),
+      redirect: 'follow',
+    });
+
+    const responseText = await res.text();
+    console.log(`[Google Apps Script] Dispatched to ${payload.to}:`, responseText);
+    return { success: true, via: 'google_script', response: responseText };
+  } catch (error: any) {
+    console.error(`[Google Apps Script Error] Failed to send to ${payload.to}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Helper to send email safely with dual-transport reliability:
+ * 1. Google Apps Script Web App (bypasses cloud SMTP port blocks)
+ * 2. Nodemailer SMTP (fallback / alternative)
+ */
+async function sendMailSafe(options: SendMailOptions, otpCode?: string) {
   const { user, pass } = getEmailCredentials();
   const mailOptions = {
     from: `"Axmin Prana Ayurveda" <${user}>`,
     ...options,
   };
 
+  const recipient = String(mailOptions.to || '');
+  const subject = String(mailOptions.subject || 'Axmin Prana Ayurveda Notification');
+  const htmlContent = String(mailOptions.html || '');
+  const textContent = String(mailOptions.text || '');
+
+  // 1. Try Google Apps Script Web App first
+  const scriptUrl = getGoogleScriptUrl();
+  if (scriptUrl) {
+    const scriptResult = await sendViaGoogleScript({
+      to: recipient,
+      subject,
+      html: htmlContent,
+      text: textContent,
+      otp: otpCode,
+    });
+    if (scriptResult.success) {
+      return scriptResult;
+    }
+    console.warn(`[Mail Notice] Google Apps Script failed, attempting Nodemailer SMTP fallback...`);
+  }
+
+  // 2. Nodemailer SMTP transport fallback
   const transporter = getTransporter();
 
   if (!pass || !transporter) {
@@ -303,10 +383,14 @@ export async function sendOtpEmail(email: string, otp: string, name?: string) {
     </div>
   `;
 
-  return sendMailSafe({
-    to: email,
-    subject: `Your Axmin Prana Login Verification Code: ${otp}`,
-    html,
-  });
+  return sendMailSafe(
+    {
+      to: email,
+      subject: `Your Axmin Prana Login Verification Code: ${otp}`,
+      html,
+      text: `Namaste ${name || ''},\n\nYour Axmin Prana login verification code is: ${otp}\n\nThis verification code will expire in 10 minutes.\n\n© ${new Date().getFullYear()} Axmin Prana Ayurveda.`,
+    },
+    otp
+  );
 }
 
