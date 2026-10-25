@@ -83,6 +83,10 @@ export async function sendViaGoogleScript(payload: {
     });
 
     const responseText = await res.text();
+    if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+      console.warn(`[Google Apps Script Warning] Endpoint returned HTML error page instead of JSON. Check script deployment permissions.`);
+      return { success: false, error: 'Google Apps Script returned an HTML error' };
+    }
     console.log(`[Google Apps Script] Dispatched to ${payload.to}:`, responseText);
     return { success: true, via: 'google_script', response: responseText };
   } catch (error: any) {
@@ -93,8 +97,8 @@ export async function sendViaGoogleScript(payload: {
 
 /**
  * Helper to send email safely with dual-transport reliability:
- * 1. Google Apps Script Web App (bypasses cloud SMTP port blocks)
- * 2. Nodemailer SMTP (fallback / alternative)
+ * 1. Nodemailer SMTP (Direct Gmail SMTP with App Password)
+ * 2. Google Apps Script Web App (High-reliability HTTP delivery)
  */
 async function sendMailSafe(options: SendMailOptions, otpCode?: string) {
   const { user, pass } = getEmailCredentials();
@@ -108,40 +112,58 @@ async function sendMailSafe(options: SendMailOptions, otpCode?: string) {
   const htmlContent = String(mailOptions.html || '');
   const textContent = String(mailOptions.text || '');
 
-  // 1. Try Google Apps Script Web App first
-  const scriptUrl = getGoogleScriptUrl();
-  if (scriptUrl) {
-    const scriptResult = await sendViaGoogleScript({
-      to: recipient,
-      subject,
-      html: htmlContent,
-      text: textContent,
-      otp: otpCode,
-    });
-    if (scriptResult.success) {
-      return scriptResult;
-    }
-    console.warn(`[Mail Notice] Google Apps Script failed, attempting Nodemailer SMTP fallback...`);
+  console.log(`[Email Dispatch] Sending to: ${recipient} | Subject: ${subject}`);
+  if (otpCode) {
+    console.log(`========================================`);
+    console.log(`[AUTH OTP DISPATCH] Recipient: ${recipient}`);
+    console.log(`[AUTH OTP CODE] ===> ${otpCode} <===`);
+    console.log(`========================================`);
   }
 
-  // 2. Nodemailer SMTP transport fallback
-  const transporter = getTransporter();
+  let lastError = '';
 
-  if (!pass || !transporter) {
+  // 1. Direct Gmail SMTP (Nodemailer with Google App Password)
+  const transporter = getTransporter();
+  if (pass && transporter) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[Nodemailer SMTP] Email sent successfully to ${mailOptions.to}: ${info.messageId}`);
+      return { success: true, via: 'smtp', messageId: info.messageId };
+    } catch (error: any) {
+      console.error(`[Nodemailer SMTP Error] Failed to send email to ${mailOptions.to}:`, error.message);
+      lastError = error.message;
+    }
+  }
+
+  // 2. Fallback to Google Apps Script Web App
+  const scriptUrl = getGoogleScriptUrl();
+  if (scriptUrl) {
+    try {
+      const scriptResult = await sendViaGoogleScript({
+        to: recipient,
+        subject,
+        html: htmlContent,
+        text: textContent,
+        otp: otpCode,
+      });
+      if (scriptResult.success) {
+        return scriptResult;
+      }
+    } catch (scriptErr: any) {
+      console.error(`[Google Apps Script Error]:`, scriptErr.message);
+      if (!lastError) lastError = scriptErr.message;
+    }
+  }
+
+  // If credentials not set
+  if (!pass && !scriptUrl) {
     console.log(`[Nodemailer Notice] Email sending simulated (EMAIL_PASS not set in .env):`);
     console.log(`  To: ${mailOptions.to}`);
     console.log(`  Subject: ${mailOptions.subject}`);
     return { simulated: true, success: true };
   }
 
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[Nodemailer] Email sent to ${mailOptions.to}: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
-  } catch (error: any) {
-    console.error(`[Nodemailer Error] Failed to send email to ${mailOptions.to}:`, error.message);
-    return { success: false, error: error.message };
-  }
+  return { success: false, error: lastError || 'Failed to dispatch email' };
 }
 
 /**
