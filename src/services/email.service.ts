@@ -41,7 +41,7 @@ function getGoogleScriptUrl(): string | null {
     process.env.GOOGLE_SCRIPT_URL ||
     process.env.EMAIL_SCRIPT_URL ||
     process.env.OTP_SCRIPT_URL ||
-    'https://script.google.com/macros/s/AKfycbyOikz0_ZumfoOYpANyZY3B2DNg7nGwpOXoqSj2r-o7H10gSbQAc5Y1I8FHZ_jLon25qg/exec'
+    'https://script.google.com/macros/s/AKfycby9HSlfYDkwmhChVmGO5G11P4Kftc6DqZSbiuz0SUj9VO-AXSwkvdhq5AMd10MCSrru6g/exec'
   );
 }
 
