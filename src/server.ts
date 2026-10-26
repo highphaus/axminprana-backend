@@ -76,20 +76,16 @@ app.get('/', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   const isDbReady = mongoose.connection.readyState === 1;
-  const scriptUrl =
-    process.env.MAIL_SCRIPT_URL ||
-    process.env.GOOGLE_SCRIPT_URL ||
-    'https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec';
-
-  const isOfficialAxmin = scriptUrl.includes('AKfycbwEjKOz');
+  const scriptUrl = process.env.MAIL_SCRIPT_URL || process.env.GOOGLE_SCRIPT_URL || '';
 
   res.json({
     status: isDbReady ? 'healthy' : 'initializing',
     database: isDbReady ? 'connected' : 'connecting',
     service: 'Axmin Prana Ayurveda Backend',
-    version: '1.2.0-axmin-mailer',
-    mailerReady: !!scriptUrl,
-    senderAccount: isOfficialAxmin ? 'axminprana@gmail.com' : 'highphaus@gmail.com',
+    version: '1.4.0-smtp-verified',
+    emailPassConfigured: !!process.env.EMAIL_PASS,
+    hasScriptUrl: !!scriptUrl,
+    scriptSnippet: scriptUrl ? scriptUrl.substring(0, 45) + '...' : 'none',
     timestamp: new Date().toISOString()
   });
 });
