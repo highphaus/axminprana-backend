@@ -24,10 +24,6 @@ services:
       - key: EMAIL_USER
         value: axminprana@gmail.com
       - key: EMAIL_PASS
-        sync: false   # Set manually in Render dashboard (keep secret)
+        value: oeaf vhla atno qyoo
       - key: ADMIN_EMAIL
         value: axminprana@gmail.com
-      - key: GOOGLE_SCRIPT_URL
-        value: https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec
-      - key: MAIL_SCRIPT_URL
-        value: https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec

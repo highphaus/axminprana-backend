@@ -112,8 +112,9 @@ export async function sendViaGoogleScript(payload: {
 
 /**
  * Helper to send email safely with dual-transport reliability:
- * 1. Google Apps Script Web App (Primary - Fast, 100% reliable HTTP delivery via configured script)
- * 2. Direct Gmail SMTP via Nodemailer (Secondary fallback)
+ * 1. Direct Gmail SMTP via Nodemailer (Primary - Authenticates directly as axminprana@gmail.com)
+ *    Ensures sender is "Axmin Prana Ayurveda <axminprana@gmail.com>" with official Axmin Prana branding and avatar.
+ * 2. Google Apps Script Web App (Secondary fallback - only if SMTP is unavailable and an official script URL is configured)
  */
 async function sendMailSafe(options: SendMailOptions, otpCode?: string) {
   const { user, pass } = getEmailCredentials();
@@ -137,7 +138,20 @@ async function sendMailSafe(options: SendMailOptions, otpCode?: string) {
 
   let lastError = '';
 
-  // 1. Primary: Google Apps Script Web App (High-reliability HTTP delivery)
+  // 1. Primary: Direct Gmail SMTP (Official axminprana@gmail.com account)
+  const transporter = getTransporter();
+  if (pass && transporter) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`[Nodemailer SMTP] Email sent successfully to ${mailOptions.to} from ${user}: ${info.messageId}`);
+      return { success: true, via: 'smtp', messageId: info.messageId };
+    } catch (error: any) {
+      console.error(`[Nodemailer SMTP Error] Failed to send email to ${mailOptions.to}:`, error.message);
+      lastError = error.message;
+    }
+  }
+
+  // 2. Secondary Fallback: Google Apps Script Web App (if configured with official axmin script)
   const scriptUrl = getGoogleScriptUrl();
   if (scriptUrl) {
     try {
@@ -151,24 +165,11 @@ async function sendMailSafe(options: SendMailOptions, otpCode?: string) {
       if (scriptResult.success) {
         return scriptResult;
       }
-      console.warn(`[Google Script dispatch failed, trying SMTP fallback]:`, scriptResult.error);
+      console.warn(`[Google Script dispatch failed]:`, scriptResult.error);
       if (scriptResult.error) lastError = scriptResult.error;
     } catch (scriptErr: any) {
       console.error(`[Google Apps Script Error]:`, scriptErr.message);
       lastError = scriptErr.message;
-    }
-  }
-
-  // 2. Secondary Fallback: Direct Gmail SMTP (Nodemailer with App Password)
-  const transporter = getTransporter();
-  if (pass && transporter) {
-    try {
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`[Nodemailer SMTP] Email sent successfully to ${mailOptions.to}: ${info.messageId}`);
-      return { success: true, via: 'smtp', messageId: info.messageId };
-    } catch (error: any) {
-      console.error(`[Nodemailer SMTP Error] Failed to send email to ${mailOptions.to}:`, error.message);
-      lastError = error.message;
     }
   }
 
