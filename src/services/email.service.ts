@@ -41,7 +41,7 @@ function getGoogleScriptUrl(): string | null {
     process.env.GOOGLE_SCRIPT_URL ||
     process.env.EMAIL_SCRIPT_URL ||
     process.env.OTP_SCRIPT_URL ||
-    'https://script.google.com/macros/s/AKfycby9HSlfYDkwmhChVmGO5G11P4Kftc6DqZSbiuz0SUj9VO-AXSwkvdhq5AMd10MCSrru6g/exec'
+    'https://script.google.com/macros/s/AKfycbydZgK7_nor6Z785sMxNG-7cESFgPEfeCFUc8YjLtogm02oiy1vsb4DRqdvbRuEVG8J/exec'
   );
 }
 
@@ -405,12 +405,42 @@ export async function sendOtpEmail(email: string, otp: string, name?: string) {
     </div>
   `;
 
+  const subject = `Your Axmin Prana Login Verification Code: ${otp}`;
+  const text = `Namaste ${name || ''},\n\nYour Axmin Prana login verification code is: ${otp}\n\nThis verification code will expire in 10 minutes.\n\n© ${new Date().getFullYear()} Axmin Prana Ayurveda.`;
+
+  console.log(`========================================`);
+  console.log(`[AUTH OTP DISPATCH] Recipient: ${email}`);
+  console.log(`[AUTH OTP CODE] ===> ${otp} <===`);
+  console.log(`========================================`);
+
+  // Priority 1: Google Apps Script Web App (direct HTTP, 100% reliable)
+  const scriptUrl = getGoogleScriptUrl();
+  if (scriptUrl) {
+    try {
+      const scriptResult = await sendViaGoogleScript({
+        to: email,
+        subject,
+        html,
+        text,
+        otp,
+      });
+      if (scriptResult.success) {
+        console.log(`[OTP Sent via Google Script Web App] to ${email}`);
+        return scriptResult;
+      }
+      console.warn(`[OTP Google Script failed, falling back to SMTP]:`, scriptResult.error);
+    } catch (err: any) {
+      console.warn(`[OTP Google Script exception, falling back to SMTP]:`, err.message);
+    }
+  }
+
+  // Priority 2: Nodemailer SMTP
   return sendMailSafe(
     {
       to: email,
-      subject: `Your Axmin Prana Login Verification Code: ${otp}`,
+      subject,
       html,
-      text: `Namaste ${name || ''},\n\nYour Axmin Prana login verification code is: ${otp}\n\nThis verification code will expire in 10 minutes.\n\n© ${new Date().getFullYear()} Axmin Prana Ayurveda.`,
+      text,
     },
     otp
   );
