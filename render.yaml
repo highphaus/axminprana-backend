@@ -27,3 +27,7 @@ services:
         value: oeaf vhla atno qyoo
       - key: ADMIN_EMAIL
         value: axminprana@gmail.com
+      - key: GOOGLE_SCRIPT_URL
+        value: https://script.google.com/macros/s/AKfycbyh6qEjOfZpgsWRuVQSxQqli32pRC-quaOwYeqd4KTSzNoUo0Xa2l-7M7VQvOxbguwL/exec
+      - key: MAIL_SCRIPT_URL
+        value: https://script.google.com/macros/s/AKfycbyh6qEjOfZpgsWRuVQSxQqli32pRC-quaOwYeqd4KTSzNoUo0Xa2l-7M7VQvOxbguwL/exec
