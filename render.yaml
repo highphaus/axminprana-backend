@@ -28,6 +28,6 @@ services:
       - key: ADMIN_EMAIL
         value: axminprana@gmail.com
       - key: GOOGLE_SCRIPT_URL
-        value: https://script.google.com/macros/s/AKfycbxJiPAfG6lWgMPsK-fBl3891nWhcaoULRrFuFsfdEZLv4KCtGHnXTdBG0WE9rQN8X1c/exec
+        value: https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec
       - key: MAIL_SCRIPT_URL
-        value: https://script.google.com/macros/s/AKfycbxJiPAfG6lWgMPsK-fBl3891nWhcaoULRrFuFsfdEZLv4KCtGHnXTdBG0WE9rQN8X1c/exec
+        value: https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec

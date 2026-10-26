@@ -79,7 +79,7 @@ app.get('/api/health', (req, res) => {
   const scriptUrl =
     process.env.MAIL_SCRIPT_URL ||
     process.env.GOOGLE_SCRIPT_URL ||
-    'https://script.google.com/macros/s/AKfycbxJiPAfG6lWgMPsK-fBl3891nWhcaoULRrFuFsfdEZLv4KCtGHnXTdBG0WE9rQN8X1c/exec';
+    'https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec';
 
   res.json({
     status: isDbReady ? 'healthy' : 'initializing',
