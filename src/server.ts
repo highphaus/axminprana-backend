@@ -76,11 +76,17 @@ app.get('/', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   const isDbReady = mongoose.connection.readyState === 1;
+  const scriptUrl =
+    process.env.MAIL_SCRIPT_URL ||
+    process.env.GOOGLE_SCRIPT_URL ||
+    'https://script.google.com/macros/s/AKfycbydZgK7_nor6Z785sMxNG-7cESFgPEfeCFUc8YjLtogm02oiy1vsb4DRqdvbRuEVG8J/exec';
+
   res.json({
     status: isDbReady ? 'healthy' : 'initializing',
     database: isDbReady ? 'connected' : 'connecting',
     service: 'Axmin Prana Ayurveda Backend',
-    version: '1.0.0',
+    version: '1.1.0-otp-script',
+    mailerReady: !!scriptUrl,
     timestamp: new Date().toISOString()
   });
 });
