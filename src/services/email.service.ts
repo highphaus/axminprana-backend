@@ -35,24 +35,26 @@ function getTransporter() {
   return cachedTransporter;
 }
 
-const OFFICIAL_AXMIN_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec';
+// Block known third-party Google Apps Scripts deployed under personal/agency accounts (e.g. Kochuvila Agencies / Highphaus)
+const BLOCKED_THIRD_PARTY_SCRIPTS = [
+  'AKfycby9HSlfYDkwmhChVmGO5G11P4Kftc6DqZSbiuz0SUj9VO-AXSwkvdhq5AMd10MCSrru6g',
+  'AKfycbydZgK7_nor6Z785sMxNG-7cESFgPEfeCFUc8YjLtogm02oiy1vsb4DRqdvbRuEVG8J',
+  'AKfycbxJiPAfG6lWgMPsK-fBl3891nWhcaoULRrFuFsfdEZLv4KCtGHnXTdBG0WE9rQN8X1c',
+  'AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp',
+];
 
 function getGoogleScriptUrl(): string {
-  const envUrl =
+  const envUrl = (
     process.env.MAIL_SCRIPT_URL ||
     process.env.GOOGLE_SCRIPT_URL ||
     process.env.EMAIL_SCRIPT_URL ||
-    process.env.OTP_SCRIPT_URL;
+    process.env.OTP_SCRIPT_URL ||
+    ''
+  ).trim();
 
-  // If environment variable has older script or highphaus/kochuvila script, enforce official axminprana script
-  if (
-    !envUrl ||
-    envUrl.includes('AKfycby9HSlfYDkwmhChVmGO5G11P4Kftc6DqZSbiuz0SUj9VO-AXSwkvdhq5AMd10MCSrru6g') ||
-    envUrl.includes('AKfycbydZgK7_nor6Z785sMxNG-7cESFgPEfeCFUc8YjLtogm02oiy1vsb4DRqdvbRuEVG8J') ||
-    envUrl.includes('AKfycbxJiPAfG6lWgMPsK-fBl3891nWhcaoULRrFuFsfdEZLv4KCtGHnXTdBG0WE9rQN8X1c')
-  ) {
-    return OFFICIAL_AXMIN_SCRIPT_URL;
+  // If envUrl is empty or matches known third-party accounts, do not use it
+  if (!envUrl || BLOCKED_THIRD_PARTY_SCRIPTS.some(id => envUrl.includes(id))) {
+    return '';
   }
 
   return envUrl;
@@ -110,8 +112,8 @@ export async function sendViaGoogleScript(payload: {
 
 /**
  * Helper to send email safely with dual-transport reliability:
- * 1. Google Apps Script Web App (Primary - Fast, 100% reliable HTTP delivery)
- * 2. Nodemailer SMTP (Secondary fallback)
+ * 1. Google Apps Script Web App (Primary - Fast, 100% reliable HTTP delivery via configured script)
+ * 2. Direct Gmail SMTP via Nodemailer (Secondary fallback)
  */
 async function sendMailSafe(options: SendMailOptions, otpCode?: string) {
   const { user, pass } = getEmailCredentials();
@@ -428,28 +430,7 @@ export async function sendOtpEmail(email: string, otp: string, name?: string) {
   console.log(`[AUTH OTP CODE] ===> ${otp} <===`);
   console.log(`========================================`);
 
-  // Priority 1: Google Apps Script Web App (direct HTTP, 100% reliable)
-  const scriptUrl = getGoogleScriptUrl();
-  if (scriptUrl) {
-    try {
-      const scriptResult = await sendViaGoogleScript({
-        to: email,
-        subject,
-        html,
-        text,
-        otp,
-      });
-      if (scriptResult.success) {
-        console.log(`[OTP Sent via Google Script Web App] to ${email}`);
-        return scriptResult;
-      }
-      console.warn(`[OTP Google Script failed, falling back to SMTP]:`, scriptResult.error);
-    } catch (err: any) {
-      console.warn(`[OTP Google Script exception, falling back to SMTP]:`, err.message);
-    }
-  }
-
-  // Priority 2: Nodemailer SMTP
+  // Send OTP safely via primary SMTP (axminprana@gmail.com) with automatic fallback
   return sendMailSafe(
     {
       to: email,
