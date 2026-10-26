@@ -35,14 +35,27 @@ function getTransporter() {
   return cachedTransporter;
 }
 
-function getGoogleScriptUrl(): string | null {
-  return (
+const OFFICIAL_AXMIN_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec';
+
+function getGoogleScriptUrl(): string {
+  const envUrl =
     process.env.MAIL_SCRIPT_URL ||
     process.env.GOOGLE_SCRIPT_URL ||
     process.env.EMAIL_SCRIPT_URL ||
-    process.env.OTP_SCRIPT_URL ||
-    'https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec'
-  );
+    process.env.OTP_SCRIPT_URL;
+
+  // If environment variable has older script or highphaus/kochuvila script, enforce official axminprana script
+  if (
+    !envUrl ||
+    envUrl.includes('AKfycby9HSlfYDkwmhChVmGO5G11P4Kftc6DqZSbiuz0SUj9VO-AXSwkvdhq5AMd10MCSrru6g') ||
+    envUrl.includes('AKfycbydZgK7_nor6Z785sMxNG-7cESFgPEfeCFUc8YjLtogm02oiy1vsb4DRqdvbRuEVG8J') ||
+    envUrl.includes('AKfycbxJiPAfG6lWgMPsK-fBl3891nWhcaoULRrFuFsfdEZLv4KCtGHnXTdBG0WE9rQN8X1c')
+  ) {
+    return OFFICIAL_AXMIN_SCRIPT_URL;
+  }
+
+  return envUrl;
 }
 
 /**

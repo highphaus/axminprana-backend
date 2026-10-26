@@ -81,12 +81,15 @@ app.get('/api/health', (req, res) => {
     process.env.GOOGLE_SCRIPT_URL ||
     'https://script.google.com/macros/s/AKfycbwEjKOz70JpKjcseg1REtHZOzzJGt0Al73QdyB6IGeT5gBYmwENbkenmG4KqOuYgWpp/exec';
 
+  const isOfficialAxmin = scriptUrl.includes('AKfycbwEjKOz');
+
   res.json({
     status: isDbReady ? 'healthy' : 'initializing',
     database: isDbReady ? 'connected' : 'connecting',
     service: 'Axmin Prana Ayurveda Backend',
-    version: '1.1.0-otp-script',
+    version: '1.2.0-axmin-mailer',
     mailerReady: !!scriptUrl,
+    senderAccount: isOfficialAxmin ? 'axminprana@gmail.com' : 'highphaus@gmail.com',
     timestamp: new Date().toISOString()
   });
 });
